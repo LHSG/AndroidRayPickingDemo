@@ -24,24 +24,24 @@ public class Triangle {
 //             0 = disjoint (no intersect)
 //             1 = intersect in unique point I1
 //             2 = are in the same plane
-    public static int intersectRayAndTriangle(Ray R, Triangle T, float[] I)
+    public static int intersectRayAndTriangle(float[] near, float[] far, Triangle T, float[] I)
     {
         float[]    u, v, n;             // triangle vectors
         float[]    dir, w0, w;          // ray vectors
         float     r, a, b;             // params to calc ray-plane intersect
  
         // get triangle edge vectors and plane normal
-        u =  Vector3D.minus(T.V1, T.V0);
-        v =  Vector.minus(T.V2, T.V0);
-        n =  Vector.crossProduct(u, v);             // cross product
+        u =  VectorUtil.minus(T.V1, T.V0);
+        v =  VectorUtil.minus(T.V2, T.V0);
+        n =  VectorUtil.crossProduct(u, v);             // cross product
  
         if (Arrays.equals(n, new float[]{0.0f,0.0f,0.0f})){           // triangle is degenerate
             return -1;                 // do not deal with this case
         }
-        dir =  Vector.minus(R.P1, R.P0);             // ray direction vector
-        w0 = Vector.minus( R.P0 , T.V0);
-        a = - Vector.dot(n,w0);
-        b =  Vector.dot(n,dir);
+        dir =  VectorUtil.minus(near, far);             // ray direction vector
+        w0 = VectorUtil.minus( far , T.V0);
+        a = - VectorUtil.dot(n,w0);
+        b =  VectorUtil.dot(n,dir);
         if (Math.abs(b) < SMALL_NUM) {     // ray is parallel to triangle plane
             if (a == 0){                // ray lies in triangle plane
                 return 2;
@@ -57,19 +57,19 @@ public class Triangle {
         }
         // for a segment, also test if (r > 1.0) => no intersect
  
-        float[] tempI =  Vector.addition(R.P0,  Vector.scalarProduct(r, dir));           // intersect point of ray and plane
+        float[] tempI =  VectorUtil.addition(far,  VectorUtil.scalarProduct(r, dir));           // intersect point of ray and plane
         I[0] = tempI[0];
         I[1] = tempI[1];
         I[2] = tempI[2];
  
         // is I inside T?
         float    uu, uv, vv, wu, wv, D;
-        uu =  Vector.dot(u,u);
-        uv =  Vector.dot(u,v);
-        vv =  Vector.dot(v,v);
-        w =  Vector.minus(I, T.V0);
-        wu =  Vector.dot(w,u);
-        wv = Vector.dot(w,v);
+        uu =  VectorUtil.dot(u,u);
+        uv =  VectorUtil.dot(u,v);
+        vv =  VectorUtil.dot(v,v);
+        w =  VectorUtil.minus(I, T.V0);
+        wu =  VectorUtil.dot(w,u);
+        wv = VectorUtil.dot(w,v);
         D = (uv * uv) - (uu * vv);
  
         // get and test parametric coords
