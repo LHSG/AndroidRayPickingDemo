@@ -5,19 +5,17 @@ import android.opengl.GLU;
 import android.opengl.Matrix;
 import android.util.Log;
 
-import junit.framework.Assert;
-
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-
-import javax.microedition.khronos.opengles.GL10;
 
 /**
  * Created by artilla on 2016. 9. 27..
  */
 
 public class Square {
+    private final static String TAG = "Square";
+
     float[] vertices;
     private FloatBuffer vbuf;
 
@@ -28,9 +26,18 @@ public class Square {
 
     private int mProgram;
     private int maPositionHandle;
+    private int muColorHandle;
     private int muMVPMatrixHandle;
 
-    public Square() {
+    private float[] position;
+    private String name;
+    float color[];
+
+    public Square(String name, float[] color, float[] position) {
+        this.name = name;
+        this.color = color;
+        this.position = position;
+
         initShapes();
 
         int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexShaderCode);
@@ -41,33 +48,29 @@ public class Square {
         GLES20.glLinkProgram(mProgram);                  // creates OpenGL program executables
         // get handle to the vertex shader's vPosition member
         maPositionHandle = GLES20.glGetAttribLocation(mProgram, "aPosition");
+        muColorHandle = GLES20.glGetUniformLocation(mProgram, "vColor");
         muMVPMatrixHandle = GLES20.glGetUniformLocation(mProgram, "uMVPMatrix");
     }
 
     public void draw(float[] projMatrix, float[] viewMatrix) {
-        //glUseProgram
-        // Add program to OpenGL environment
         GLES20.glUseProgram(mProgram);
-        Assert.assertTrue(GLES20.glGetError() == 0);
-        // Prepare the square data
         GLES20.glVertexAttribPointer(maPositionHandle, 3, GLES20.GL_FLOAT, false, 12, vbuf);
         GLES20.glEnableVertexAttribArray(maPositionHandle);
-        Assert.assertTrue(GLES20.glGetError() == 0);
+
+        GLES20.glUniform4fv(muColorHandle, 1, color, 0);
+
         Matrix.setIdentityM(mMMatrix, 0);
-//		Matrix.translateM(mMMatrix, 0, 0.5f, 1.5f, -5.0f);
-        Matrix.translateM(mMMatrix, 0, 0.0f, 0.0f, -5.0f);
+		Matrix.translateM(mMMatrix, 0, position[0], position[1], position[2]);
         Matrix.multiplyMM(mMVMatrix, 0, viewMatrix, 0, mMMatrix, 0);
         Matrix.multiplyMM(mMVPMatrix, 0, projMatrix, 0, mMVMatrix, 0);
         GLES20.glUniformMatrix4fv(muMVPMatrixHandle, 1, false, mMVPMatrix, 0);
-        Assert.assertTrue(GLES20.glGetError() == 0);
-        // Draw the square(2개의 삼각형이므로 정점은 6개)
         GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6);
     }
 
-    public void rayPicking(int viewWidth, int viewHeight, float rx, float ry) {
+    public void rayPicking(int viewWidth, int viewHeight, float rx, float ry, float[] viewMatrix, float[] projMatrix) {
 
-        float [] near_xyz = unProject(rx, ry, 0, mMVPMatrix, viewWidth, viewHeight);
-        float [] far_xyz = unProject(rx, ry, 1, mMVPMatrix, viewWidth, viewHeight);
+        float [] near_xyz = unProject(rx, ry, 0, viewMatrix, projMatrix, viewWidth, viewHeight);
+        float [] far_xyz = unProject(rx, ry, 1, viewMatrix, projMatrix, viewWidth, viewHeight);
 
         int coordCount = vertices.length;
         float[] convertedSquare = new float[coordCount];
@@ -94,17 +97,14 @@ public class Square {
         int intersects2 = Triangle.intersectRayAndTriangle(near_xyz, far_xyz, t2, point2);
 
         if (intersects1 == 1 || intersects1 == 2) {
-            Log.d("test", "touch!: ");
+            Log.d(TAG, "touch!: " + name);
         }
         else if (intersects2 == 1 || intersects2 == 2) {
-            Log.d("test", "touch!: ");
+            Log.d(TAG, "touch!: " + name);
         }
     }
     private int loadShader(int type, String shaderCode){
-        // create a vertex shader type (GLES20.GL_VERTEX_SHADER)
-        // or a fragment shader type (GLES20.GL_FRAGMENT_SHADER)
         int shader = GLES20.glCreateShader(type);
-        // add the source code to the shader and compile it
         GLES20.glShaderSource(shader, shaderCode);
         GLES20.glCompileShader(shader);
         return shader;
@@ -129,26 +129,28 @@ public class Square {
         vbuf.position(0);		// set the buffer to read the first coordinate
     }
 
-    private  float[] unProject( float winx, float winy, float winz,
-                                float[] mvpMatrix,
+    private  float[] unProject( float xTouch, float yTouch, float winz,
+                                float[] viewMatrix,
+                                float[] projMatrix,
                                 int width, int height) {
-        float[] m = new float[16];
-        float[] in = new float[4];
-        float[] out = new float[4];
+        int[] viewport = {0, 0, width, height};
 
-        Matrix.invertM(m, 0, mvpMatrix, 0);
+        float[] out = new float[3];
+        float[] temp = new float[4];
+        float[] temp2 = new float[4];
+        // get the near and far ords for the click
 
-        in[0] = (winx / (float)width) * 2 - 1;
-        in[1] = (winy / (float)height) * 2 - 1;
-        in[2] = 2 * winz - 1;
-        in[3] = 1;
+        float winx = xTouch, winy =(float)viewport[3] - yTouch;
 
-        Matrix.multiplyMV(out, 0, m, 0, in, 0);
+        int result = GLU.gluUnProject(winx, winy, winz, viewMatrix, 0, projMatrix, 0, viewport, 0, temp, 0);
 
-        if (out[3]==0)  return null;
-
-        out[3] = 1/out[3];
-        return new float[] {out[0] * out[3], out[1] * out[3], out[2] * out[3]};
+        Matrix.multiplyMV(temp2, 0, viewMatrix, 0, temp, 0);
+        if(result == 1){
+            out[0] = temp2[0] / temp2[3];
+            out[1] = temp2[1] / temp2[3];
+            out[2] = temp2[2] / temp2[3];
+        }
+        return out;
     }
 
     private final String vertexShaderCode =
@@ -160,8 +162,9 @@ public class Square {
 
     private final String fragmentShaderCode =
             "precision mediump float;  \n" +
-                    "void main(){              \n" +
-                    " gl_FragColor = vec4 (0, 0.5, 0, 1.0); \n" +
-                    "}                         \n";
+            "uniform vec4 vColor;      \n" +
+            "void main(){              \n" +
+            "  gl_FragColor = vColor;  \n" +
+            "}                         \n";
 
 }

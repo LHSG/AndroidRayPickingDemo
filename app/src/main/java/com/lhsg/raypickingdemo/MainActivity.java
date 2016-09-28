@@ -5,10 +5,7 @@ import android.app.ActivityManager;
 import android.content.Context;
 import android.content.pm.ConfigurationInfo;
 import android.opengl.GLSurfaceView;
-import android.opengl.Matrix;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.Window;
 import android.view.WindowManager;
@@ -16,7 +13,7 @@ import android.view.WindowManager;
 public class MainActivity extends Activity {
 
     private GLSurfaceView mGLSurfaceView;
-    private SquareRenderer renderer;
+    private MyRenderer renderer;
 
     @Override
     public void onCreate(Bundle savedInstanceState)
@@ -38,7 +35,7 @@ public class MainActivity extends Activity {
         {
             // Request an OpenGL ES 2.0 compatible context.
             mGLSurfaceView.setEGLContextClientVersion(2);
-            renderer = new SquareRenderer();
+            renderer = new MyRenderer();
             mGLSurfaceView.setRenderer(renderer);
         }
         else
